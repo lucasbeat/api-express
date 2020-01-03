@@ -1,60 +1,59 @@
 const express = require('express')
-const router = express.Router()
-const Users = require('../model/user')
+const Users = require('../models/user')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+const router = express.Router()
+const config = require('../config/config')
 
+//FUNCOES AUXILIARES
+const createUserToken = (userId) => {
+    return jwt.sign({ id: userId }, config.jwt_pass, { expiresIn: config.jwt_expires_in })
+}
 
 router.get('/', async (req, res) => {
     try {
         const users = await Users.find({})
         return res.send(users)
     } catch (err) {
-        return res.send({ error: 'erro na consulta de usuarios' })
+        return res.status(500).send({ error: 'erro na consulta de usuarios' })
     }
-})
-
-router.get('/', (req, res) => {
-    Users.find({}, (err, data) => {
-        if (err) return res.send({ error: `erro na consulta de usuarios` })
-        return res.send(data)
-    })
 })
 
 router.post('/create', async (req, res) => {
     const { email, password } = req.body
 
-    if (!email || !password) return res.send({ error: `dados insuficientes` })
+    if (!email || !password) return res.status(400).send({ error: `dados insuficientes` })
 
     try {
-        if (await Users.findOne({ email })) return res.send({ error: 'Usuario ja registrado' })
+        if (await Users.findOne({ email })) return res.status(400).send({ error: 'Usuario ja registrado' })
 
         const user = await Users.create(req.body)
         user.password = undefined
-        return res.send(user)
+        return res.status(201).send({ user, token: createUserToken(user.id) })
     }
     catch (err) {
-        return res.send({ error: `erro ao buscar os usuarios` })
+        return res.status(500).send({ error: `erro ao buscar os usuarios` })
     }
 })
 
 router.post('/auth', async (req, res) => {
     const { email, password } = req.body
 
-    if (!email || !password) return res.send({ error: 'Dados insuficientes' })
+    if (!email || !password) return res.status(400).send({ error: 'Dados insuficientes' })
 
     try {
         const user = await Users.findOne({ email }).select('+password')
-        if (!user) return res.send({ error: 'usuario nao registrado' })
+        if (!user) return res.status(400).send({ error: 'usuario nao registrado' })
 
         const pass_ok = await bcrypt.compare(password, user.password)
 
-        if (!pass_ok) return res.send({ error: 'Erro ao atutenticar usuario' })
+        if (!pass_ok) return res.status(401).send({ error: 'Erro ao atutenticar usuario' })
 
         user.password = undefined
-        return res.send(user)
+        return res.send({ user, token: createUserToken(user.id) })
     }
     catch (err) {
-        return res.send({ error: 'Erro ao buscar usuario' })
+        return res.status(500).send({ error: 'Erro ao buscar usuario' })
     }
 })
 

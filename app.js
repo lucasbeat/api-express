@@ -1,14 +1,14 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
+const config = require('./config/config')
 const app = express()
 
 const indexRoute = require('./routes/index.js')
 const usersRoute = require('./routes/users')
 
 //CONFIGURANDO O MONGOOSE
-var configMongoose = require('./config')
-const url = configMongoose
+const url = config.bd_string
 const options = { useNewUrlParser: true, useUnifiedTopology: true }
 
 
